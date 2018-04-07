@@ -1,9 +1,21 @@
-function Mvvm (options = {}){
+function Mvvm(options = {}) {
     this.$options = options
     let data = this._data = this.$options.data
     observe(data)
-}
 
+    for (let key in data) {
+        Object.defineProperty(this, key, {
+            configurable: true,
+            get() {
+                return this._data[key];     // 如this.a = {b: 1}
+            },
+            set(newVal) {
+                this._data[key] = newVal;
+            }
+        });
+    }
+    new Compile(options.el, this)
+}
 function Observe(data) {
     // 所谓数据劫持就是给对象增加get,set
     // 先遍历一遍对象再说
@@ -30,4 +42,36 @@ function observe(data) {
     // 防止递归溢出
     if (!data || typeof data !== 'object') return;
     return new Observe(data);
+}
+
+function Compile(el, vm) {
+    vm.$el = document.querySelector(el)
+
+    let fragment = document.createDocumentFragment()
+
+    while (child = vm.$el.firstChild) {
+        fragment.appendChild(child)
+    }
+
+    function replace(frag) {
+        Array.from(frag.childNodes).forEach(node => {
+            let txt = node.textContent
+            let reg = /\{\{(.*?)\}\}/g
+
+            if (node.nodeType === 3 && reg.test(txt)) {
+                console.log(RegExp.$1)
+                let arr = RegExp.$1.split('.')
+                let val = vm
+                arr.forEach(key => {
+                    val = val[key]
+                })
+                node.textContent = txt.replace(reg, val).trim()
+            }
+            if (node.childNodes && node.childNodes.length) {
+                replace(node)
+            }
+        })
+    }
+    replace(fragment)
+    vm.$el.appendChild(fragment)
 }
